@@ -7,7 +7,9 @@ mongoose.connect(
   "mongodb+srv://shrimaliaditya013:Mongo%4013102k3@cluster0.dejhjin.mongodb.net/tododatabase?retryWrites=true&w=majority"
 );
 
-const userSchema = new mongoose.Schema({
+
+//Defining the schema for transaction
+const dataSchema = new mongoose.Schema({
   id: Number,
   title: String,
   price: Number,
@@ -17,42 +19,49 @@ const userSchema = new mongoose.Schema({
   sold: Boolean,
   dateOfSale: String,
 });
-const user = mongoose.model("User", userSchema);
+const data = mongoose.model("Data", dataSchema);
 
-//funtion to seed the database
+
+
+
+// funtion to seed the database
 const initializeDatabase = async () => {
-  try {
     const response = await axios.get(
       "https://s3.amazonaws.com/roxiler.com/product_transaction.json"
     );
-    const data = response.data;
-
-    await user.deleteMany({});
-
-    await user.insertMany(data);
-  } catch (error) {
-    res.send(error);
-  }
+    const final = response.data;
+    await data.deleteMany({});
+    await data.insertMany(final);
 };
 
+
+
+
 //---------------------------------------------------------------------------------------------------1
-//API to initialize the database
-app.get("/", async (req, res) => {
-  await initializeDatabase();
-  res.send({
-    msg: "Database Initialized",
-  });
+// API to initialize the database
+app.get("/seed", async (req, res) => {
+  try {
+    await initializeDatabase();
+    res.send({
+      msg: "Database Initialized",
+    });
+  } catch (error) {
+    res.send(error)
+  }
 });
 
+
+
+
 //---------------------------------------------------------------------------------------------------2
-// API to list all the transcations
+// API to list all the transcations from the given month
 app.get("/transactions", async (req, res) => {
   try {
     const { page = 1, per_page = 10, search, month } = req.query;
 
-    // Define the base query for pagination
+    // Defining the base query for pagination
     const baseQuery = {};
-    // Add search criteria if provided
+    // Adding search criteria if provided
     if (search) {
       baseQuery.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -62,7 +71,6 @@ app.get("/transactions", async (req, res) => {
     }
     // Adding month filter if provided
     if (month) {
-      // Converting month name to its corresponding numerical value
       const monthNumber = new Date(month + " 1, 2000").getMonth() + 1;
 
       // Adding month filter to the base query
@@ -74,7 +82,7 @@ app.get("/transactions", async (req, res) => {
       };
     }
 
-    const transactions = await user
+    const transactions = await data
       .find(baseQuery)
       .limit(parseInt(per_page))
       .skip((page - 1) * per_page)
@@ -97,7 +105,6 @@ app.get("/statistics", async (req, res) => {
   let totalSaleAmount = 0;
   let totalSoldItems = 0;
   let totalNotSoldItems = 0;
-  // Convert month name to its corresponding numerical value
   const monthNumber = new Date(month + " 1, 2000").getMonth() + 1;
   baseQuery.$expr = {
     $eq: [
@@ -105,7 +112,7 @@ app.get("/statistics", async (req, res) => {
       monthNumber,
     ],
   };
-  const transactions = await user
+  const transactions = await data
     .find(baseQuery)
     .limit(parseInt(per_page))
     .skip((page - 1) * per_page)
@@ -125,13 +132,15 @@ app.get("/statistics", async (req, res) => {
   });
 });
 
+
+
+
 //---------------------------------------------------------------------------------------------------4
-//Create an API for bar chart
+//API for bar chart
 app.get("/bar-chart", async (req, res) => {
   const { page = 1, per_page = 10, month } = req.query;
   const baseQuery = {};
-
-  // Convert month name to its corresponding numerical value
+  
   const monthNumber = new Date(month + " 1, 2000").getMonth() + 1;
   baseQuery.$expr = {
     $eq: [
@@ -139,12 +148,11 @@ app.get("/bar-chart", async (req, res) => {
       monthNumber,
     ],
   };
-  const transactions = await user
-    .find(baseQuery)
-    .limit(parseInt(per_page))
-    .skip((page - 1) * per_page)
-    .exec();
-
+  const transactions = await data
+  .find(baseQuery)
+  .limit(parseInt(per_page))
+  .skip((page - 1) * per_page)
+  .exec();
   const priceRanges = [
     { min: 0, max: 100 },
     { min: 101, max: 200 },
@@ -203,12 +211,91 @@ app.get("/bar-chart", async (req, res) => {
   for (let i = 0; i < transactions.length; i++) {
     const originalPrice = transactions[i].price;
     const c = Math.floor(originalPrice / 100);
-    barChartData[c].count++;
+    if(c<9){
+      barChartData[c].count++;
+    }
+    else{
+      barChartData[9].count++;
+    }
   }
   res.json(barChartData)
 });
 
 
+
+
+//---------------------------------------------------------------------------------------------------5
+// API for pie chart
+app.get('/pie-chart', async (req, res) => {
+  const { month } = req.query;
+  
+  const monthNumber = new Date(month + ' 1, 2000').getMonth() + 1;
+  
+  try {
+    // Collect all transactions from the given month
+    const transactions = await data.find({
+      $expr: {
+        $eq: [{ $month: {$dateFromString:{dateString:'$dateOfSale'}}}, monthNumber],
+      },
+    });
+    
+    // Find unique categories and number of items from those categories
+    const uniqueCategories = {};
+    transactions.forEach(transaction => {
+      const { category } = transaction;
+      if (uniqueCategories[category]) {
+        uniqueCategories[category]++;
+      } else {
+        uniqueCategories[category] = 1;
+      }
+    });
+    
+    const pieChartData = Object.entries(uniqueCategories).map(([category, itemCount]) => ({
+      category,
+      itemCount,
+    }));
+    
+    res.json(pieChartData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
+//---------------------------------------------------------------------------------------------------6
+// API which fetches data from all three above mentioned APIs
+const statisticsApiEndpoint = 'http://localhost:3000/statistics';
+const barChartApiEndpoint = 'http://localhost:3000/bar-chart';
+const pieChartApiEndpoint = 'http://localhost:3000/pie-chart';
+
+app.get('/combined-api', async (req, res) => {
+  try {
+
+    const {month}=req.query;
+    // Fetch data from the statistics API
+    const statisticsResponse = await axios.get(`${statisticsApiEndpoint}/?month=${month}`);
+
+    // Fetch data from the bar-chart API
+    const barChartResponse = await axios.get(`${barChartApiEndpoint}/?month=${month}`);
+
+    // Fetch data from the pie-chart API
+    const pieChartResponse = await axios.get(`${pieChartApiEndpoint}/?month=${month}`);
+
+    // Combine the responses into a final JSON
+    const combinedResponse = {
+      statistics: statisticsResponse.data,
+      barChart: barChartResponse.data,
+      pieChart: pieChartResponse.data,
+    };
+
+    res.json(combinedResponse);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 
 
