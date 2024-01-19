@@ -1,26 +1,17 @@
 const express = require("express");
 const mongoose = require("mongoose");
-<<<<<<< HEAD
 const cors=require("cors");
 const { default: axios } = require("axios");
 const app = express();
 app.use(cors());
-=======
-const { default: axios } = require("axios");
-const app = express();
->>>>>>> origin/main
 
 mongoose.connect(
   "mongodb+srv://shrimaliaditya013:Mongo%4013102k3@cluster0.dejhjin.mongodb.net/tododatabase?retryWrites=true&w=majority"
 );
 
-<<<<<<< HEAD
 
 //Defining the schema for transaction
 const dataSchema = new mongoose.Schema({
-=======
-const userSchema = new mongoose.Schema({
->>>>>>> origin/main
   id: Number,
   title: String,
   price: Number,
@@ -30,7 +21,6 @@ const userSchema = new mongoose.Schema({
   sold: Boolean,
   dateOfSale: String,
 });
-<<<<<<< HEAD
 const data = mongoose.model("Data", dataSchema);
 
 
@@ -65,44 +55,13 @@ app.get("/seed", async (req, res) => {
 
 
 
-//---------------------------------------------------------------------------------------------------2
-// API to list all the transcations from the given month
-=======
-const user = mongoose.model("User", userSchema);
-
-//funtion to seed the database
-const initializeDatabase = async () => {
-  try {
-    const response = await axios.get(
-      "https://s3.amazonaws.com/roxiler.com/product_transaction.json"
-    );
-    const data = response.data;
-
-    await user.deleteMany({});
-
-    await user.insertMany(data);
-  } catch (error) {
-    res.send(error);
-  }
-};
-
-//---------------------------------------------------------------------------------------------------1
-//API to initialize the database
-app.get("/", async (req, res) => {
-  await initializeDatabase();
-  res.send({
-    msg: "Database Initialized",
-  });
-});
 
 //---------------------------------------------------------------------------------------------------2
 // API to list all the transcations
->>>>>>> origin/main
 app.get("/transactions", async (req, res) => {
   try {
     const { page = 1, per_page = 10, search, month } = req.query;
 
-<<<<<<< HEAD
     // Defining the base query for pagination
     const baseQuery = {};
     // Adding search criteria if provided
@@ -121,23 +80,10 @@ app.get("/transactions", async (req, res) => {
 
   baseQuery.$or = finalConditions;
     }
-    // Adding month filter if provided
-    if (month) {
-=======
-    // Define the base query for pagination
-    const baseQuery = {};
-    // Add search criteria if provided
-    if (search) {
-      baseQuery.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { price: { $eq: parseFloat(search) } },
-      ];
-    }
+   
     // Adding month filter if provided
     if (month) {
       // Converting month name to its corresponding numerical value
->>>>>>> origin/main
       const monthNumber = new Date(month + " 1, 2000").getMonth() + 1;
 
       // Adding month filter to the base query
@@ -148,20 +94,12 @@ app.get("/transactions", async (req, res) => {
         ],
       };
     }
-<<<<<<< HEAD
     const transactions = await data
-=======
-
-    const transactions = await user
->>>>>>> origin/main
       .find(baseQuery)
       .limit(parseInt(per_page))
       .skip((page - 1) * per_page)
       .exec();
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/main
     res.send(transactions);
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
@@ -179,10 +117,7 @@ app.get("/statistics", async (req, res) => {
   let totalSaleAmount = 0;
   let totalSoldItems = 0;
   let totalNotSoldItems = 0;
-<<<<<<< HEAD
-=======
   // Convert month name to its corresponding numerical value
->>>>>>> origin/main
   const monthNumber = new Date(month + " 1, 2000").getMonth() + 1;
   baseQuery.$expr = {
     $eq: [
@@ -190,11 +125,7 @@ app.get("/statistics", async (req, res) => {
       monthNumber,
     ],
   };
-<<<<<<< HEAD
   const transactions = await data
-=======
-  const transactions = await user
->>>>>>> origin/main
     .find(baseQuery)
     .limit(parseInt(per_page))
     .skip((page - 1) * per_page)
@@ -214,17 +145,9 @@ app.get("/statistics", async (req, res) => {
   });
 });
 
-<<<<<<< HEAD
 
 
 
-//---------------------------------------------------------------------------------------------------4
-//API for bar chart
-app.get("/bar-chart", async (req, res) => {
-  const { page = 1, per_page = 10, month } = req.query;
-  const baseQuery = {};
-  
-=======
 //---------------------------------------------------------------------------------------------------4
 //Create an API for bar chart
 app.get("/bar-chart", async (req, res) => {
@@ -232,7 +155,6 @@ app.get("/bar-chart", async (req, res) => {
   const baseQuery = {};
 
   // Convert month name to its corresponding numerical value
->>>>>>> origin/main
   const monthNumber = new Date(month + " 1, 2000").getMonth() + 1;
   baseQuery.$expr = {
     $eq: [
@@ -240,20 +162,12 @@ app.get("/bar-chart", async (req, res) => {
       monthNumber,
     ],
   };
-<<<<<<< HEAD
   const transactions = await data
   .find(baseQuery)
   .limit(parseInt(per_page))
   .skip((page - 1) * per_page)
   .exec();
-=======
-  const transactions = await user
-    .find(baseQuery)
-    .limit(parseInt(per_page))
-    .skip((page - 1) * per_page)
-    .exec();
 
->>>>>>> origin/main
   const priceRanges = [
     { min: 0, max: 100 },
     { min: 101, max: 200 },
@@ -312,16 +226,12 @@ app.get("/bar-chart", async (req, res) => {
   for (let i = 0; i < transactions.length; i++) {
     const originalPrice = transactions[i].price;
     const c = Math.floor(originalPrice / 100);
-<<<<<<< HEAD
     if(c<9){
       barChartData[c].count++;
     }
     else{
       barChartData[9].count++;
     }
-=======
-    barChartData[c].count++;
->>>>>>> origin/main
   }
   res.json(barChartData)
 });
@@ -329,7 +239,6 @@ app.get("/bar-chart", async (req, res) => {
 
 
 
-<<<<<<< HEAD
 //---------------------------------------------------------------------------------------------------5
 // API for pie chart
 app.get('/pie-chart', async (req, res) => {
@@ -404,14 +313,8 @@ app.get('/combined-api', async (req, res) => {
 });
 
 
-=======
->>>>>>> origin/main
 
 
 app.listen(3000, () => {
   console.log("Listening at port 3000");
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> origin/main
