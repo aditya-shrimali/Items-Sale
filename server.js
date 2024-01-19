@@ -1,7 +1,9 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const cors=require("cors");
 const { default: axios } = require("axios");
 const app = express();
+app.use(cors());
 
 mongoose.connect(
   "mongodb+srv://shrimaliaditya013:Mongo%4013102k3@cluster0.dejhjin.mongodb.net/tododatabase?retryWrites=true&w=majority"
@@ -63,11 +65,19 @@ app.get("/transactions", async (req, res) => {
     const baseQuery = {};
     // Adding search criteria if provided
     if (search) {
-      baseQuery.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { price: { $eq: parseFloat(search) } },
-      ];
+      const parsedPrice = parseFloat(search);
+
+  const textSearchConditions = [
+    { title: { $regex: search, $options: "i" } },
+    { description: { $regex: search, $options: "i" } },
+  ];
+
+  // Only add price condition if parsedPrice is a valid number
+  const finalConditions = parsedPrice
+    ? [...textSearchConditions, { price: { $eq: parsedPrice } }]
+    : textSearchConditions;
+
+  baseQuery.$or = finalConditions;
     }
     // Adding month filter if provided
     if (month) {
@@ -81,13 +91,11 @@ app.get("/transactions", async (req, res) => {
         ],
       };
     }
-
     const transactions = await data
       .find(baseQuery)
       .limit(parseInt(per_page))
       .skip((page - 1) * per_page)
       .exec();
-
     res.send(transactions);
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
