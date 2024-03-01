@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 
 mongoose.connect(
-  "mongodb+srv://shrimaliaditya013:Mongo%4013102k3@cluster0.dejhjin.mongodb.net/tododatabase?retryWrites=true&w=majority"
+  // "clustor0"
 );
 
 
