@@ -4,10 +4,9 @@ const cors=require("cors");
 const { default: axios } = require("axios");
 const app = express();
 app.use(cors());
+MONGO_URL = process.env.MONGO_URL;
 
-mongoose.connect(
-  // "clustor0"
-);
+mongoose.connect(MONGO_URL);
 
 
 //Defining the schema for transaction
